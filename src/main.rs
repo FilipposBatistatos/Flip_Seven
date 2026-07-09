@@ -71,8 +71,8 @@ fn main() {
     {
         let mut cache = HashMap::new();
         let hit_score = value(player.hand, &deck, &mut cache);
-        let dealt_card = deck.deal(); 
-        player.deal_card(dealt_card);
+        let dealt_card = deck.draw(); 
+        player.give_card(dealt_card);
         if !player.can_draw
         {
             println!("Dealt a duplicate: {dealt_card}");
