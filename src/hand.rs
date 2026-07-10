@@ -1,5 +1,5 @@
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct Hand(u16);
+pub struct Hand(pub u16);
 
 impl Hand
 {
@@ -131,9 +131,9 @@ mod tests
         let mut hand = Hand::empty();
         hand = hand.with(4);
 
-        let newHand = hand.with(5);
+        let new_hand = hand.with(5);
 
-        let output = hand.snapshot() + &newHand.snapshot();
+        let output = hand.snapshot() + &new_hand.snapshot();
 
         expect![[r#"
             [4 ]

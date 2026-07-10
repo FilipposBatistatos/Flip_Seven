@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 mod deck;
 mod hand;
+mod dp_solver;
+mod action;
 
 use deck::Deck;
 use hand::Hand;
