@@ -16,11 +16,10 @@ pub enum PlayerStatus
     Busted,
 }
 
-#[derive(Debug)]
 pub struct Player
 {
     pub name: String,
-    pub hand: u16,       // Hand mask 
+    pub hand: Hand,       // Hand mask 
     pub cumulative_score: u32,
     pub status: PlayerStatus,
     pub strategy: Box<dyn Strategy>,

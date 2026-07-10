@@ -9,12 +9,12 @@ pub trait Strategy
     fn name(&self) -> &str;
 }
 
-pub struct Expected_value;
-impl Expected_value
+pub struct ExpectedValue;
+impl ExpectedValue
 {
     fn decide(&self, hand: Hand, deck: &Deck) -> Recommendation
     {
-        solver::recommend(hand, deck);
+        dp_solver::recommend(hand, deck)
     }
 
     fn name(&self) -> &str

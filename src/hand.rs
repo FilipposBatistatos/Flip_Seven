@@ -53,7 +53,7 @@ impl Hand
         )
     }
 
-    fn get_cards_in_hand(self) -> String
+    pub fn get_cards_in_hand(self) -> String
     {
         let mut output = String::new();
 
