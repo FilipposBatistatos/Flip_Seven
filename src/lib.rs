@@ -10,5 +10,5 @@ pub use deck::Deck;
 pub use hand::Hand;
 pub use action::{ Action, Recommendation };
 pub use player::{ Player, ControlMode, PlayerStatus };
-pub use game::Game;
-pub use strategy::Strategy;
+pub use game::{Game, StepOutcome };
+pub use strategy::{ Strategy, ExpectedValue, Threshold };

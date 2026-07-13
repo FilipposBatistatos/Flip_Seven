@@ -10,7 +10,7 @@ pub trait Strategy
 }
 
 pub struct ExpectedValue;
-impl ExpectedValue
+impl Strategy for ExpectedValue
 {
     fn decide(&self, hand: Hand, deck: &Deck) -> Recommendation
     {

@@ -40,18 +40,6 @@ impl Hand
         }
         total
     }
-}
-
-#[cfg(test)]
-impl Hand
-{
-    fn snapshot(self) -> String
-    {
-        format!(
-            "[{}]\nlen={}\nScore={}",
-            self.get_cards_in_hand(), self.len(), self.score(),
-        )
-    }
 
     pub fn get_cards_in_hand(self) -> String
     {
@@ -65,6 +53,18 @@ impl Hand
             }
         }
         output
+    }
+}
+
+#[cfg(test)]
+impl Hand
+{
+    fn snapshot(self) -> String
+    {
+        format!(
+            "[{}]\nlen={}\nScore={}",
+            self.get_cards_in_hand(), self.len(), self.score(),
+        )
     }
 }
 

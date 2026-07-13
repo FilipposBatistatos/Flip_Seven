@@ -7,83 +7,159 @@ pub struct Game
 {
     pub players: Vec<Player>,
     deck: Deck,
+    next_index: usize,
+}
+
+pub enum StepOutcome
+{
+    NeedsInput { player_index: usize, recommendation: crate::action::Recommendation },
+    RoundOver,
 }
 
 impl Game
-{   
+{
     pub fn new(players: Vec<Player>, seed: u64) -> Self
     {
-        Game { players, deck: Deck::new(seed) }
+        Game { players, deck: Deck::new(seed), next_index: 0 }
     }
 
-    pub fn play_round(&mut self)
+    pub fn start_round(&mut self)
     {
         for p in &mut self.players
         {
             p.hand = Hand::empty();
             p.status = PlayerStatus::Active;
         }
+        self.next_index = 0;
+    }
 
-        'round: loop
+    pub fn step(&mut self) -> StepOutcome
+    {
+        loop
         {
-            let mut any_active = false;
-
-            for i in 0..self.players.len()
+            if !self.players.iter().any(|p| p.status == PlayerStatus::Active)
             {
-                if self.players[i].status != PlayerStatus::Active
+                self.finish_round();
+                return StepOutcome::RoundOver;
+            }
+
+            let i = self.next_index % self.players.len();
+            self.next_index += 1;
+
+            if self.players[i].status != PlayerStatus::Active
+            {
+                continue;
+            }
+
+            let rec = self.players[i].strategy.decide(self.players[i].hand, &self.deck);
+
+            match self.players[i].control
+            {
+                ControlMode::Automatic =>
                 {
-                    continue;
+                    if self.apply(i, rec.action)
+                    {
+                        return StepOutcome::RoundOver;
+                    }
                 }
-                any_active = true;
-
-                let rec = self.players[i].strategy.decide(self.players[i].hand, &self.deck);
-
-                let action = match self.players[i].control
+                ControlMode::Advisory =>
                 {
-                    ControlMode::Automatic => rec.action,
-                    ControlMode::Advisory => 
-                    {
-                        println!(
-                            "{}: recommends {:?} ({:?})",
-                            self.players[i].name, rec.action, rec.detail
-                        );
-                        rec.action
-                    }
-                };
-
-                match action
-                {
-                    Action::Stay => self.players[i].status = PlayerStatus::Stayed,
-                    Action::Hit => 
-                    {
-                        let card = self.deck.draw();
-                        if self.players[i].hand.contains(card)
-                        {
-                            // Player drew a duplicate card
-                            self.players[i].status = PlayerStatus::Busted;
-                        }
-                        else
-                        {
-                            self.players[i].hand = self.players[i].hand.with(card);
-                            if self.players[i].hand.len() >= 7
-                            {
-                                break 'round; // End the round for ever player
-                            }
-                        }
-                    }
+                    return StepOutcome::NeedsInput { player_index: i, recommendation: rec };
                 }
             }
-            if !any_active
+        }
+    }
+
+    pub fn apply(&mut self, player_index: usize, action: Action) -> bool
+    {
+        match action
+        {
+            Action::Stay => self.players[player_index].status = PlayerStatus::Stayed,
+            Action::Hit =>
             {
-                break;
+                let card = self.deck.draw();
+                if self.players[player_index].hand.contains(card)
+                {
+                    self.players[player_index].status = PlayerStatus::Busted;
+                }
+                else
+                {
+                    self.players[player_index].hand = self.players[player_index].hand.with(card);
+                    if self.players[player_index].hand.len() >= 7
+                    {
+                        self.finish_round();
+                        return true;
+                    }
+                }
             }
         }
 
-        for p in &mut self.players 
+        if !self.players.iter().any(|p| p.status == PlayerStatus::Active)
+        {
+            self.finish_round();
+            return true;
+        }
+        false
+    }
+
+    fn finish_round(&mut self)
+    {
+        for p in &mut self.players
         {
             let round_score = if p.status == PlayerStatus::Busted { 0 } else { p.hand.score() };
             p.cumulative_score += round_score as u32;
         }
+    }
+
+    pub fn play_round(&mut self)
+    {
+        self.start_round();
+        loop
+        {
+            match self.step()
+            {
+                StepOutcome::RoundOver => return,
+                StepOutcome::NeedsInput { .. } =>
+                {
+                    panic!("play_round() requires every player to be Automatic — got an Advisory pause");
+                }
+            }
+        }
+    }
+
+    pub fn play_game(&mut self, target: u32)
+    {
+        loop
+        {
+            self.play_round();
+            if self.players.iter().any(|p| p.cumulative_score >= target)
+            {
+                return;
+            }
+        }
+    }
+
+    pub fn display(&self) -> String
+    {
+        let mut output: String = String::new();
+
+        for i in 0..self.players.len()
+        {
+            output += &format!(
+                "+--------------------------------+\n|{}\n+--------------------------------+\n| Hand: {} \n| Status: {} \n| Total: {} \n+--------------------------------+\n",
+                self.players[i].name,
+                self.players[i].hand.get_cards_in_hand(),
+                match self.players[i].status
+                {
+                    PlayerStatus::Active => "Active",
+                    PlayerStatus::Busted => "Busted",
+                    PlayerStatus::Stayed => "Stayed",
+                },
+                self.players[i].cumulative_score
+                );
+        }
+
+        output
     }
 }
 
