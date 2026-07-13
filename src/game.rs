@@ -139,27 +139,66 @@ impl Game
         }
     }
 
-    pub fn display(&self) -> String
+   pub fn display(&self) -> String
     {
-        let mut output: String = String::new();
+        let headers = ["Player", "Hand", "Hand Score", "Status", "Cumulative"];
 
-        for i in 0..self.players.len()
+        let rows: Vec<[String; 5]> = self.players.iter().map(|p| {
+            let status_str = match p.status
+            {
+                PlayerStatus::Active => "Active",
+                PlayerStatus::Busted => "Busted",
+                PlayerStatus::Stayed => "Stayed",
+            };
+            [
+                p.name.clone(),
+                p.hand.get_cards_in_hand(),
+                p.hand.score().to_string(),
+                status_str.to_string(),
+                p.cumulative_score.to_string(),
+            ]
+        }).collect();
+
+        let mut widths = [0usize; 5];
+        for (i, h) in headers.iter().enumerate()
         {
-            output += &format!(
-                "+--------------------------------+\n|{}\n+--------------------------------+\n| Hand: {} \n| Status: {} \n| Total: {} \n+--------------------------------+\n",
-                self.players[i].name,
-                self.players[i].hand.get_cards_in_hand(),
-                match self.players[i].status
-                {
-                    PlayerStatus::Active => "Active",
-                    PlayerStatus::Busted => "Busted",
-                    PlayerStatus::Stayed => "Stayed",
-                },
-                self.players[i].cumulative_score
-                );
+            widths[i] = h.len();
+        }
+        for row in &rows
+        {
+            for i in 0..5
+            {
+                widths[i] = widths[i].max(row[i].len());
+            }
         }
 
-        output
+        let sep = |widths: &[usize; 5]| -> String {
+            let mut s = String::from("+");
+            for w in widths
+            {
+                s += &"-".repeat(w + 2);
+                s += "+";
+            }
+            s + "\n"
+        };
+        let row_str = |cells: &[String; 5], widths: &[usize; 5]| -> String {
+            let mut s = String::from("|");
+            for i in 0..5
+            {
+                s += &format!(" {:<width$} |", cells[i], width = widths[i]);
+            }
+            s + "\n"
+        };
+
+        let mut out = sep(&widths);
+        out += &row_str(&headers.map(|s| s.to_string()), &widths);
+        out += &sep(&widths);
+        for row in &rows
+        {
+            out += &row_str(row, &widths);
+        }
+        out += &sep(&widths);
+        out
     }
 }
 
