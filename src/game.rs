@@ -43,6 +43,12 @@ impl Game
                 return StepOutcome::RoundOver;
             }
 
+            // Check for users that drew 7 cards
+            if self.players.iter().any(|p| p.hand.len() == 7)
+            {
+                return StepOutcome::RoundOver;
+            }
+
             let i = self.next_index % self.players.len();
             self.next_index += 1;
 
@@ -203,22 +209,6 @@ impl Game
 }
 
 #[cfg(test)]
-impl Game
-{
-    fn state(self) -> String
-    {
-        let mut output: String = String::new();
-
-        for i in 0..self.players.len()
-        {
-            output += &format!("{}\n", self.players[i].hand.get_cards_in_hand());
-        }
-
-        output
-    }
-}
-
-#[cfg(test)]
 mod test
 {
     use super::*;
@@ -234,19 +224,23 @@ mod test
             players.push(Player::new(
                     &format!("Player {}", i),
                     Box::new(Threshold(25)), 
-                    ControlMode::Advisory)
+                    ControlMode::Automatic)
                 );
         }
 
         let mut game = Game::new(players, 123);
         game.play_round();
 
-        let output = game.state();
+        let output = game.display();
 
         expect![[r#"
-            9 10 11 
-            3 11 12 
-            10 
+            +----------+----------+------------+--------+------------+
+            | Player   | Hand     | Hand Score | Status | Cumulative |
+            +----------+----------+------------+--------+------------+
+            | Player 1 | 9 10 11  | 30         | Stayed | 30         |
+            | Player 2 | 3 11 12  | 26         | Stayed | 26         |
+            | Player 3 | 10       | 10         | Busted | 0          |
+            +----------+----------+------------+--------+------------+
         "#]].assert_eq(&output);
     }
 }

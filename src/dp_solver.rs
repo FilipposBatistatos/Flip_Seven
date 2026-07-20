@@ -49,6 +49,18 @@ pub fn recommend(hand: Hand, deck: &Deck) -> Recommendation
     let mut table = Table { memo: HashMap::new() };
 
     let stay_value = hand.score() as f64;
+    // Checking that the deck has enough cards to make a decision
+    let fallback;
+    let deck = if deck.get_total_remaining() < 5
+    {
+        fallback = Deck::new(2345);
+        &fallback
+    }
+    else
+    {
+        deck
+    };
+
     let hit_value = table.value(hand, deck);
 
     let action = if hit_value > stay_value { Action::Hit } else { Action::Stay };
