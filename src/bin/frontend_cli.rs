@@ -5,15 +5,17 @@ use std::time::{ SystemTime, UNIX_EPOCH };
 
 use std::io::{ self, Write };
 
-fn run(bot_specs: &[String], target: u32, seed: u64)
+fn run(human_players: u8, bot_specs: &[String], target: u32, seed: u64)
 {
     let mut players: Vec<Player> = bot_specs
         .iter()
         .map(|spec| Player::new(spec, strategy_from_spec(spec), ControlMode::Automatic))
         .collect();
 
-    players.push(Player::new("You", Box::new(ExpectedValue), ControlMode::Advisory));
-    let human_index = players.len() - 1;
+    for id in 1..=human_players
+    {
+        players.push(Player::new(&format!("Human {}", id), Box::new(ExpectedValue), ControlMode::Advisory));
+    }
 
     let mut game = Game::new(players, seed);
     let mut round = 0;
@@ -31,11 +33,6 @@ fn run(bot_specs: &[String], target: u32, seed: u64)
                 StepOutcome::RoundOver => break,
                 StepOutcome::NeedsInput { player_index, recommendation } =>
                 {
-                    // Only one seat is Advisory here, so player_index will
-                    // always be human_index — this assert just makes that
-                    // assumption explicit rather than silent.
-                    assert_eq!(player_index, human_index, "unexpected non-human pause");
-
                     print!("{}", game.display());
                     println!(
                         "Your turn — suggestion: {:?} ({:?})",
@@ -121,7 +118,10 @@ fn read_action() -> Action
 struct Cli
 {
     #[arg(long)]
-    bots: String,
+    human_players: Option<u8>,
+
+    #[arg(long)]
+    bots: Option<String>,
 
     #[arg(long, default_value_t = 200)]
     target: u32,
@@ -133,12 +133,17 @@ struct Cli
 fn main()
 {
     let cli = Cli::parse();
-    let bot_specs: Vec<String> = cli.bots.split(',').map(|s| s.to_string()).collect();
+    let human_players: u8 = cli.human_players.unwrap_or(0);
+    let bot_specs: Vec<String> = cli
+        .bots
+        .as_deref()
+        .map(|s| s.split(',').map(|s| s.trim().to_string()).collect())
+        .unwrap_or_default();
 
     let seed = cli.seed.unwrap_or_else(|| {
         SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos() as u64
     });
 
-    run(&bot_specs, cli.target, seed);
+    run(human_players, &bot_specs, cli.target, seed);
 }
 
