@@ -63,7 +63,7 @@ pub fn recommend(hand: Hand, deck: &Deck) -> Recommendation
 
     let hit_value = table.value(hand, deck);
 
-    let action = if hit_value > stay_value { Action::Hit } else { Action::Stay };
+    let action = if hit_value > stay_value { Action::Hit(None) } else { Action::Stay };
     Recommendation::with_detail(action, hit_value, stay_value) 
 }
 

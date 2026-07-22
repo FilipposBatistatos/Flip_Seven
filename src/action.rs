@@ -1,7 +1,7 @@
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Action
 {
-    Hit,
+    Hit(Option<usize>),
     Stay,
 }
 
@@ -36,7 +36,7 @@ impl Recommendation
     {
         let action_text = match self.action
         {
-            Action::Hit => "[HIT]",
+            Action::Hit(_) => "[HIT]",
             Action::Stay => "[STAY]",
         };
 

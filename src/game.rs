@@ -43,12 +43,6 @@ impl Game
                 return StepOutcome::RoundOver;
             }
 
-            // Check for users that drew 7 cards
-            if self.players.iter().any(|p| p.hand.len() == 7)
-            {
-                return StepOutcome::RoundOver;
-            }
-
             let i = self.next_index % self.players.len();
             self.next_index += 1;
 
@@ -81,9 +75,27 @@ impl Game
         match action
         {
             Action::Stay => self.players[player_index].status = PlayerStatus::Stayed,
-            Action::Hit =>
+            Action::Hit(provided_card) =>
             {
-                let card = self.deck.draw();
+                let card = match provided_card
+                { 
+                    Some(card) =>
+                    {
+                        if self.deck.discard(card)
+                        {
+                            card
+                        }
+                        else
+                        {
+                            self.deck.draw()
+                        }
+                    }
+                    None =>
+                    {
+                        self.deck.draw()
+                    }
+                };
+
                 if self.players[player_index].hand.contains(card)
                 {
                     self.players[player_index].status = PlayerStatus::Busted;
@@ -92,6 +104,7 @@ impl Game
                 {
                     self.players[player_index].hand = self.players[player_index].hand.with(card);
                     if self.players[player_index].hand.len() >= 7
+                    // Return true if someone reached the seven card target
                     {
                         self.finish_round();
                         return true;
@@ -102,6 +115,7 @@ impl Game
 
         if !self.players.iter().any(|p| p.status == PlayerStatus::Active)
         {
+            // Return true if there are no active players
             self.finish_round();
             return true;
         }

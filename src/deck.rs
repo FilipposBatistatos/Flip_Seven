@@ -19,9 +19,23 @@ impl Deck
         }
     }
 
+    pub fn discard(&mut self, card: usize) -> bool
+    {
+        // Return positive of able to discard, 
+        // negative otherwise
+        if card < 13 && self.cards[card] > 0
+        {
+            self.cards[card] -= 1;
+            self.total_remaining -= 1;
+            return true;
+        }
+        false
+    }
+
     pub fn draw(&mut self) -> usize
     {
-        if self.total_remaining == 0
+        // Draws from deck, updates deck state 
+        if self.total_remaining <= 0
         {
             self.reshuffle();
         }
@@ -98,6 +112,23 @@ mod tests
         expect![[r#"
             remaining=79
              [1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]"#]]
+            .assert_eq(&output);
+    }
+
+    #[test]
+    fn discard()
+    {
+        let mut deck = Deck::new(123);
+
+        deck.discard(0);
+        deck.discard(1);
+        deck.discard(12);
+
+        let output = deck.snapshot();
+
+        expect![[r#"
+            remaining=76
+             [0, 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 11]"#]]
             .assert_eq(&output);
     }
 

@@ -28,7 +28,7 @@ impl Strategy for Threshold
 {
     fn decide(&self, hand: Hand, deck: &Deck) -> Recommendation
     {
-        let action = if hand.score() < self.0 { Action::Hit } else { Action::Stay };
+        let action = if hand.score() < self.0 { Action::Hit(None) } else { Action::Stay };
         Recommendation::simple(action)
     }
 
