@@ -18,12 +18,12 @@ fn run(human_players: u8, bot_specs: &[String], target: u32, seed: u64)
     }
 
     let mut game = Game::new(players, seed);
-    let mut round = 0;
+    let mut round : usize = 0;
 
     loop
     {
         round += 1;
-        game.start_round();
+        game.start_round(round);
         println!("\n=== Round {} ===", round);
 
         loop

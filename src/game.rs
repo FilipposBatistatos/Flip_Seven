@@ -23,14 +23,15 @@ impl Game
         Game { players, deck: Deck::new(seed), next_index: 0 }
     }
 
-    pub fn start_round(&mut self)
+    pub fn start_round(&mut self, starting_index: usize)
     {
         for p in &mut self.players
         {
             p.hand = Hand::empty();
             p.status = PlayerStatus::Active;
         }
-        self.next_index = 0;
+        /* In the rules of flip seven the starting player increments every round */
+        self.next_index = starting_index;
     }
 
     pub fn step(&mut self) -> StepOutcome
@@ -131,9 +132,9 @@ impl Game
         }
     }
 
-    pub fn play_round(&mut self)
+    pub fn play_round(&mut self, starting_index: usize)
     {
-        self.start_round();
+        self.start_round(starting_index);
         loop
         {
             match self.step()
@@ -149,9 +150,11 @@ impl Game
 
     pub fn play_game(&mut self, target: u32)
     {
+        let mut round : usize = 0;
         loop
         {
-            self.play_round();
+            self.play_round(round);
+            round += 1;
             if self.players.iter().any(|p| p.cumulative_score >= target)
             {
                 return;
