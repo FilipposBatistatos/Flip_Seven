@@ -1,3 +1,8 @@
+/* Rules for a hand
+ * - Hand should never contain duplicate cards
+ * - Hand should never contain more than 7 cards
+ */
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct Hand(pub u16);
 
@@ -11,7 +16,14 @@ impl Hand
     /* Used in exploration so we don't mutate the actual hand */
     pub fn with(self, value: usize) -> Self
     {
-        Hand(self.0 | (1 << value))
+        if self.len() == 7 && !self.contains(value)
+        {
+            self
+        }
+        else
+        {
+            Hand(self.0 | (1 << value))
+        }
     }
 
     pub fn contains(self, value: usize) -> bool
@@ -34,7 +46,7 @@ impl Hand
                 total += v as i32;
             }
         }
-        if self.len() >= 7
+        if self.len() == 7
         {
             total += 15;
         }
@@ -69,7 +81,7 @@ impl Hand
 }
 
 #[cfg(test)]
-mod tests
+mod expect_tests
 {
     use super::*;
     use expect_test::expect;
@@ -164,4 +176,81 @@ mod tests
             Contains 7=false"#]]
             .assert_eq(&output);
     }
+}
+
+#[cfg(test)]
+mod proptests
+{
+    use super::*;
+    use proptest::prelude::*;
+
+    proptest! 
+    {
+        /* Hand length never exceeds 7 */
+        #[test]
+        fn hand_len_never_exceeds_seven(cards in prop::collection::vec(0..13usize, 0..20)) 
+        {
+            let mut hand = Hand::empty();
+            for card in cards 
+            {
+                hand = hand.with(card);
+            }
+            prop_assert!(hand.len() <= 7);
+        }
+
+        /* Cannot add cards already contained by the hand */
+        #[test]
+        fn duplicates_are_idempotent(card in 0..13usize)
+        {
+            let hand = Hand::empty().with(card);       
+            let len_before = hand.len();
+
+            let hand_after = hand.with(card);
+            prop_assert_eq!(hand_after.len(), len_before);
+            prop_assert_eq!(hand_after, hand);
+        }
+
+        /* Contains reflects added cards */
+        #[test]
+        fn contains_return_true_for_added_cards(cards in prop::collection::vec(0..13usize, 1..7))
+        {
+            let mut hand = Hand::empty();
+            for &card in &cards
+            {
+                hand = hand.with(card);
+            }
+
+            for &card in &cards
+            {
+                prop_assert!(hand.contains(card));
+            }
+        }
+
+        /* Score calculations */
+        #[test]
+        fn score_matches_sum_plus_bonus(cards in prop::collection::vec(0..13usize, 0..15))
+        {
+            let mut hand = Hand::empty();
+            for card in cards
+            {
+                hand = hand.with(card);
+            }
+
+            let mut expect_sum = 0;
+            for v in 0..13
+            {
+                if hand.contains(v)
+                {
+                    expect_sum += v as i32;
+                }
+            }
+
+            if hand.len() == 7 
+            {
+                expect_sum += 15;
+            }
+
+            prop_assert_eq!(hand.score(), expect_sum);
+        }
+    } 
 }

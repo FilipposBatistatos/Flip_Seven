@@ -246,7 +246,7 @@ mod test
         }
 
         let mut game = Game::new(players, 123);
-        game.play_round();
+        game.play_round(0);
 
         let output = game.display();
 
