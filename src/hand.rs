@@ -1,10 +1,5 @@
-/* Rules for a hand
- * - Hand should never contain duplicate cards
- * - Hand should never contain more than 7 cards
- */
-
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct Hand(pub u16);
+pub struct Hand(pub u32);
 
 impl Hand
 {

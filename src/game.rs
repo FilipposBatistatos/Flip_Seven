@@ -38,6 +38,19 @@ impl Game
     {
         loop
         {
+            // Check whether the deck needs reshuffling
+            if self.deck.get_total_remaining() == 0
+            {
+                let mut hands: Vec<Hand> = vec![];
+                for player in &self.players 
+                {
+                    hands.push(player.hand);
+                }
+
+                self.deck.reshuffle(&hands);
+            }
+            
+            // Check whether there are active players still
             if !self.players.iter().any(|p| p.status == PlayerStatus::Active)
             {
                 self.finish_round();
