@@ -28,7 +28,7 @@ impl Hand
 
     pub fn len(self) -> u32
     {
-        self.0.count_ones()
+        (self.0 & 0x1FFF).count_ones()
     }
 
     pub fn score(self) -> i32
@@ -41,6 +41,20 @@ impl Hand
                 total += v as i32;
             }
         }
+        
+        if (self.0 & (1 << 18)) != 0
+        {
+            total *= 2;
+        }
+
+        for v in 1..6
+        {
+            if self.0 & (1 << (12 + v)) != 0 
+            {
+                total += (v * 2) as i32;
+            }
+        }
+
         if self.len() == 7
         {
             total += 15;
@@ -56,9 +70,23 @@ impl Hand
         {
             if (self.0 & (1 << i)) != 0
             {
-                output.push_str(&format!("{} ", i.to_string()))
+                output.push_str(&format!("{} ", i.to_string()));
             }
         }
+
+        for i in 1..6
+        {
+            if (self.0 & (1 << (i + 12))) != 0
+            {
+                output.push_str(&format!("+{} ", (2 * i).to_string()));
+            }
+        }
+        
+        if (self.0 & (1 << 18)) != 0
+        {
+            output.push_str(&"x2");
+        }
+
         output
     }
 }
@@ -151,24 +179,31 @@ mod expect_tests
             .assert_eq(&output);
     }
 
-    // TODO: Better contains testing, perhaps exhaustive
     #[test]
-    fn contains()
+    fn modifiers_add_to_score()
     {
-        let mut hand = Hand::empty();
+        let hand = Hand::empty().with(13).with(14).with(15).with(16).with(17).with(18);
 
-        hand.with(4);
-        hand.with(5);
-        hand.with(6);
-
-        let mut output = format!("Contains 7={}", hand.contains(7).to_string());
-
-        hand.with(7);
-        output = format!("{}\nContains 7={}", &output, hand.contains(7).to_string());
+        let output = hand.snapshot();
 
         expect![[r#"
-            Contains 7=false
-            Contains 7=false"#]]
+            [+2 +4 +6 +8 +10 x2]
+            len=0
+            Score=30"#]]
+            .assert_eq(&output);
+    }
+
+    #[test]
+    fn multiplier_effects_base_score_only()
+    {
+        let hand = Hand::empty().with(2).with(3).with(13).with(14).with(18);
+
+        let output = hand.snapshot();
+
+        expect![[r#"
+            [2 3 +2 +4 x2]
+            len=2
+            Score=16"#]]
             .assert_eq(&output);
     }
 }
@@ -178,6 +213,13 @@ mod proptests
 {
     use super::*;
     use proptest::prelude::*;
+
+    const PLUS_TWO: usize = 13;
+    const PLUS_FOUR: usize = 14;
+    const PLUS_SIX: usize = 15;
+    const PLUS_EIGHT: usize = 16;
+    const PLUS_TEN: usize = 17;
+    const TIMES_TWO: usize = 18;
 
     proptest! 
     {
@@ -246,6 +288,38 @@ mod proptests
             }
 
             prop_assert_eq!(hand.score(), expect_sum);
+        }
+
+        /* ============== Special cards ============== */
+
+        /* Multipler doubles base score */
+        #[test]
+        fn multiplier_doubles_base_score(base_cards in prop::collection::vec(0..13usize, 1..7))
+        {
+            let mut base_hand = Hand::empty();
+            for card in base_cards
+            {
+                base_hand = base_hand.with(card);
+            }
+
+            let modified_hand = base_hand.with(TIMES_TWO); 
+            prop_assert!(modified_hand.score() >= base_hand.score() * 2);
+        }
+        
+        #[test]
+        fn multiplier_doubles_only_base_score(
+            c0 in 0..13usize, c1 in 0..13usize, c2 in 0..13usize,
+            c3 in 0..13usize, c4 in 0..13usize, c5 in 0..13usize,
+            mod_card in prop::sample::select(vec![PLUS_TWO, PLUS_FOUR, PLUS_SIX, PLUS_EIGHT, PLUS_TEN])
+        )
+        {
+            let base = Hand::empty().with(c0).with(c1).with(c2).with(c3).with(c4).with(c5);
+
+            let with_mod = base.with(mod_card);
+            let doubled = with_mod.with(TIMES_TWO);
+            let increase = doubled.score() - with_mod.score();
+
+            prop_assert_eq!(increase, base.score()); 
         }
     } 
 }
