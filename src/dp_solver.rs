@@ -15,7 +15,7 @@ impl Table
     {
         if let Some(v) = self.memo.get(&hand)
         {
-            return hand.score() as f64;
+            return *v;
         }
 
         if hand.len() >= 7
@@ -68,7 +68,7 @@ pub fn recommend(hand: Hand, deck: &Deck) -> Recommendation
 }
 
 #[cfg(test)]
-mod tests
+mod expect_tests
 {
     use super::*;
     use expect_test::expect;
@@ -84,7 +84,7 @@ mod tests
 
         expect![[r#"
             Recommendation= [HIT]
-            Details= Hit: 15.90 vs Stay: 0.00"#]].assert_eq(&output);
+            Details= Hit: 17.67 vs Stay: 0.00"#]].assert_eq(&output);
     }
 
     #[test]
@@ -125,3 +125,28 @@ mod tests
             Details= Hit: 21.68 vs Stay: 21.00"#]].assert_eq(&output);
     }
 }
+
+/*
+
+TODO: Update action to contain hit and stay value instead of just detail
+
+#[cfg(test)]
+mod proptests
+{
+    use super::*;
+    use proptest::prelude::*;
+
+    /* Strategy to generate valid hands */
+    fn arb_hand() -> impl Strategy<Value = Hand>
+    {
+        prop::collection::vec(0..13usize, 0..=7)
+            .prop_map(|cards| {
+                let mut hand = Hand::empty();
+                for c in cards
+                {
+                    hand = hand.with(c);
+                }
+            })
+    }
+}
+*/
