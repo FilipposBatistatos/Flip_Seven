@@ -34,10 +34,25 @@ fn run(human_players: u8, bot_specs: &[String], target: u32, seed: u64)
                 StepOutcome::NeedsInput { player_index, recommendation } =>
                 {
                     print!("{}", game.display());
+                    // println!(
+                    //     "Your turn — suggestion: {:?} (Hit: {:.2} vs Stay: {:.2})",
+                    //     recommendation.action, &format!("{}", recommendation.hit), &format!("{}", recommendation.stay)
+                    //     );
+
+                    let stats_str = match (recommendation.hit, recommendation.stay)
+                    {
+                        (Some(h), Some(s))  => format!("(Hit: {:.2} vs Stay: {:.2})", h, s),
+                        (Some(h), None)     => format!("(Hit: {:.2}", h),
+                        (None, Some(s))     => format!("(Stay: {:.2})", s),
+                        (None, None)        => String::new(),
+                    };
+
                     println!(
-                        "Your turn — suggestion: {:?} ({:?})",
-                        recommendation.action, recommendation.detail
-                        );
+                        "Your turn - suggestion: {:?}{}",
+                        recommendation.action,
+                        stats_str
+                    );
+
                     let action = read_action();
                     if game.apply(player_index, action)
                     {

@@ -29,7 +29,7 @@ impl Table
         let total = deck.get_total_remaining();
         let mut hit_score: f64 = 0.0;
 
-        for card in 0..13
+        for card in 0..19
         {
             if hand.0 & (1 << card) == 0
             {
@@ -84,7 +84,7 @@ mod expect_tests
 
         expect![[r#"
             Recommendation= [HIT]
-            Details= Hit: 17.67 vs Stay: 0.00"#]].assert_eq(&output);
+            Details= Hit: 10.92 vs Stay: 0.00"#]].assert_eq(&output);
     }
 
     #[test]
