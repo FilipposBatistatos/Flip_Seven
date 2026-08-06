@@ -220,6 +220,7 @@ mod proptests
     const PLUS_EIGHT: usize = 16;
     const PLUS_TEN: usize = 17;
     const TIMES_TWO: usize = 18;
+    const SECOND_CHANCE: usize = 19;
 
     proptest! 
     {

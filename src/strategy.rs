@@ -2,6 +2,7 @@ use crate::action::{ Action, Recommendation };
 use crate::deck::Deck;
 use crate::hand::Hand;
 use crate::dp_solver;
+use crate::player::{ Player, PlayerStatus };
 
 pub trait Strategy
 {
@@ -20,10 +21,10 @@ pub trait Strategy
         _players
             .iter()
             .enumerate()
-            .filter(|(i, p)| *i != acting && p.status == PlayerStatus::Active)
+            .filter(|(i, p)| *i != _acting && p.status == PlayerStatus::Active)
             .max_by_key(|(_, p)| p.hand.score())
             .map(|(i, _)| i)
-            .unwrap_or(acting)
+            .unwrap_or(_acting)
     }
 }
 

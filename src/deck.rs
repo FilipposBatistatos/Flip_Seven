@@ -9,7 +9,7 @@ pub struct Deck
     rng: SmallRng,
 }
 
-pub mod card
+pub mod cards
 {
     // Modifier cards
     pub const PLUS_TWO: usize = 13;
@@ -20,9 +20,9 @@ pub mod card
     pub const TIMES_TWO: usize = 18;
 
     // Action cards
-    pub const FLIP_THREE: usize = 19;
+    pub const FLIP_THREE: usize = 21;
     pub const FREEZE: usize = 20;
-    pub const SECOND_CHANCE: usize = 21;
+    pub const SECOND_CHANCE: usize = 19;
 }
 
 impl Deck 

@@ -1,4 +1,4 @@
-use flip_seven::{ Action, Deck, Hand, Game, StepOutcome, Player, ControlMode, Strategy, ExpectedValue, Threshold };
+use flip_seven::{ Action, Deck, Hand, Game, StepOutcome, Player, ControlMode, Strategy, ExpectedValue, Threshold, cards };
 
 use clap::Parser;
 use std::time::{ SystemTime, UNIX_EPOCH };
@@ -59,6 +59,27 @@ fn run(human_players: u8, bot_specs: &[String], target: u32, seed: u64)
                         // Game finished
                         break;
                     }
+                }
+                StepOutcome::NeedsTarget { action_player, card, valid_targets, recommendation } =>
+                {
+                    let action_name = match card
+                    {
+                        cards::FLIP_THREE => "Flip Three",
+                        cards::SECOND_CHANCE => "Second Chance",
+                        cards::FREEZE => "Freeze",
+                        _ => "Undefined",
+                    };
+                    println!("{:?} card drawn", action_name);
+                    println!("Suggested target: ({}){}", recommendation, game.players[recommendation].name);
+                    
+                    let target = read_target(&valid_targets);
+                    let physical_cards = match card
+                    {
+                        cards::FLIP_THREE => read_flip_three_cards(), // returns [Options<usize>; 3]
+                        _ => [].to_vec(),
+                    };
+
+                    game.apply_action_card(card, target, &physical_cards);
                 }
             }
         }
@@ -126,6 +147,51 @@ fn read_action() -> Action
             _ => println!("Didn't understand that — type 'h' or 's'."),
         }
     }
+}
+
+fn read_target(valid_target: &[usize]) -> usize
+{
+    loop {
+        println!("Choose a target:");
+        io::stdout().flush().ok();
+        let mut line = String::new();
+        if io::stdin().read_line(&mut line).is_err()
+        {
+            continue;
+        }
+        if let Ok(n) = line.trim().parse::<usize>()
+        {
+            if valid_target.contains(&n)
+            {
+                return n;
+            }
+        }
+        println!("Invalid target - pick a valid player");
+    }
+}
+
+fn read_flip_three_cards() -> Vec<Option<usize>>
+{
+    println!("Enter up to 3 cards, press enter to draw from the virtual deck");
+    let mut card_vec = Vec::new();
+    for i in 1..=3
+    {
+        print!("Card {}: ", i);
+        io::stdout().flush().ok();
+        let mut line = String::new();
+        if io::stdin().read_line(&mut line).is_err()
+        {
+            card_vec.push(None);
+            continue;
+        }
+        match line.trim().parse::<usize>()
+        {
+            Ok(n) => card_vec.push(Some(n)),
+            Err(_) => card_vec.push(None),
+        }
+    }
+
+    card_vec
 }
 
 #[derive(Parser)]

@@ -42,6 +42,7 @@ impl Player
             status: PlayerStatus::Active,
             strategy,
             control,
+            has_second_chance: false,
         }
     }
 }

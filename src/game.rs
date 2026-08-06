@@ -1,6 +1,6 @@
 use crate::action::Action;
 use crate::player::{ ControlMode, Player, PlayerStatus };
-use crate::deck::Deck;
+use crate::deck::{ Deck, cards };
 use crate::hand::Hand;
 
 pub struct Game
@@ -8,11 +8,23 @@ pub struct Game
     pub players: Vec<Player>,
     deck: Deck,
     next_index: usize,
+    pending_action: Option<(usize, usize)>, // (acting_player, card)
 }
 
 pub enum StepOutcome
 {
-    NeedsInput { player_index: usize, recommendation: crate::action::Recommendation },
+    NeedsInput 
+    { 
+        player_index: usize, 
+        recommendation: crate::action::Recommendation 
+    },
+    NeedsTarget
+    {
+        action_player: usize,       // Index of the player that drew the card
+        card: usize,                // Number corresponding to the card type
+        valid_targets: Vec<usize>,  // Vector of valid player indexes
+        recommendation: usize,      // Holds recommendation for human players
+    },
     RoundOver,
 }
 
@@ -20,7 +32,7 @@ impl Game
 {
     pub fn new(players: Vec<Player>, seed: u64) -> Self
     {
-        Game { players, deck: Deck::new(seed), next_index: 0 }
+        Game { players, deck: Deck::new(seed), next_index: 0, pending_action: None }
     }
 
     pub fn start_round(&mut self, starting_index: usize)
@@ -36,6 +48,38 @@ impl Game
 
     pub fn step(&mut self) -> StepOutcome
     {
+        // Checking for pending actions
+        if let Some((acting_player, card)) = self.pending_action.take() // Take removes 
+        {
+            match self.players[acting_player].control
+            {
+                ControlMode::Automatic =>
+                {
+                    let target = {
+                        let strategy = &*self.players[acting_player].strategy;
+                        strategy.choose_target(acting_player, &self.players, card)
+                    };
+                    if self.apply_action_card(card, target, &[])
+                    {
+                        return StepOutcome::RoundOver;
+                    }
+                }
+                ControlMode::Advisory =>
+                {
+                    let recommendation = self.players[acting_player].strategy.choose_target(acting_player, &self.players, card);
+                    return StepOutcome::NeedsTarget
+                    {
+                        action_player: acting_player,
+                        card,
+                        valid_targets: (0..self.players.len())
+                            .filter(|&j| self.players[j].status == PlayerStatus::Active)
+                            .collect(),
+                        recommendation,
+                    };
+                }
+            }
+        }
+         
         loop
         {
             // Check whether the deck needs reshuffling
@@ -58,10 +102,16 @@ impl Game
             }
 
             let i = self.next_index % self.players.len();
-            self.next_index += 1;
 
-            if self.players[i].status != PlayerStatus::Active
-            {
+            self.next_index += 1;
+            /* 
+             * This catches:
+             * - Frozen
+             * - Stayed
+             * - Busted 
+             */
+            if self.players[i].status != PlayerStatus::Active 
+           {
                 continue;
             }
 
@@ -110,18 +160,56 @@ impl Game
                     }
                 };
 
-                if self.players[player_index].hand.contains(card)
+                /* Handle cards you can hold onto */
+                if card < 19
                 {
-                    self.players[player_index].status = PlayerStatus::Busted;
-                }
-                else
-                {
-                    self.players[player_index].hand = self.players[player_index].hand.with(card);
-                    if self.players[player_index].hand.len() >= 7
-                    // Return true if someone reached the seven card target
+                    /* The modifier cards also go through this check but you cannot bust on them */
+                    if self.players[player_index].hand.contains(card)
                     {
-                        self.finish_round();
-                        return true;
+                        if self.players[player_index].has_second_chance
+                        {
+                            self.players[player_index].has_second_chance = false;
+                            // Card is discarded and thus not added to the hand
+                            // player survives
+                        }
+                        else
+                        {
+                            self.players[player_index].status = PlayerStatus::Busted;
+                        }
+                    }
+                    else
+                    {
+                        self.players[player_index].hand = self.players[player_index].hand.with(card);
+                        if self.players[player_index].hand.len() >= 7
+                        // Return true if someone reached the seven card target
+                        {
+                            self.finish_round();
+                            return true;
+                        }
+                    }
+                }
+                else /* Handle action cards 19, 20, 21 */
+                {
+                    match self.players[player_index].control
+                    {
+                        ControlMode::Automatic =>
+                        {
+                            let target = {
+                                // Borrow checker conflict we need to take out strategy from players
+                                // before we can give players back to it
+                                let strategy = &*self.players[player_index].strategy;
+                                strategy.choose_target(player_index, &self.players, card) 
+                            };
+                            if self.apply_action_card(card, target, &[])
+                            {
+                                return true;
+                            }
+                        }
+                        ControlMode::Advisory =>
+                        {
+                            self.pending_action = Some((player_index, card));
+                            return false;
+                        }
                     }
                 }
             }
@@ -132,6 +220,31 @@ impl Game
             // Return true if there are no active players
             self.finish_round();
             return true;
+        }
+        false
+    }
+
+    pub fn apply_action_card(&mut self, card: usize, target: usize, physical_cards: &[Option<usize>]) -> bool
+    {
+        match card
+        {
+            cards::FREEZE => self.players[target].status = PlayerStatus::Frozen,
+            cards::SECOND_CHANCE => self.players[target].has_second_chance = true,
+            cards::FLIP_THREE => {
+                for i in 0..3
+                {
+                    let drawn = physical_cards.get(i).copied().flatten();
+                    if self.apply(target, Action::Hit(drawn))
+                    {
+                        return true; //round over, player busted
+                    }
+                    if self.players[target].status == PlayerStatus::Busted
+                    {
+                        break;
+                    }
+                }
+            },
+            _ => return false,
         }
         false
     }
@@ -155,7 +268,11 @@ impl Game
                 StepOutcome::RoundOver => return,
                 StepOutcome::NeedsInput { .. } =>
                 {
-                    panic!("play_round() requires every player to be Automatic — got an Advisory pause");
+                    panic!("play_round() requires every player to be Automatic — got an Advisory pause, input");
+                }
+                StepOutcome::NeedsTarget { .. } =>
+                {
+                    panic!("play_round() requires every player to be Automatic — got and Advisory pause, target");
                 }
             }
         }
@@ -185,10 +302,11 @@ impl Game
                 PlayerStatus::Active => "Active",
                 PlayerStatus::Busted => "Busted",
                 PlayerStatus::Stayed => "Stayed",
+                PlayerStatus::Frozen => "Frozen",
             };
             [
                 p.name.clone(),
-                p.hand.get_cards_in_hand(),
+                p.hand.get_cards_in_hand() + if p.has_second_chance { "<3" } else { "" },
                 p.hand.score().to_string(),
                 status_str.to_string(),
                 p.cumulative_score.to_string(),

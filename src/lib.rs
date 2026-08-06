@@ -6,7 +6,7 @@ pub mod player;
 pub mod strategy;
 pub mod game;
 
-pub use deck::Deck;
+pub use deck::{ Deck, cards };
 pub use hand::Hand;
 pub use action::{ Action, Recommendation };
 pub use player::{ Player, ControlMode, PlayerStatus };
