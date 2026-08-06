@@ -12,6 +12,7 @@ pub enum ControlMode
 pub enum PlayerStatus
 {
     Active,
+    Frozen,
     Stayed,
     Busted,
 }
@@ -24,6 +25,9 @@ pub struct Player
     pub status: PlayerStatus,
     pub strategy: Box<dyn Strategy>,
     pub control: ControlMode,
+
+    /* Action cards */
+    pub has_second_chance: bool,
 }
 
 impl Player

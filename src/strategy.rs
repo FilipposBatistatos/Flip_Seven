@@ -7,6 +7,24 @@ pub trait Strategy
 {
     fn decide(&self, hand: Hand, deck: &Deck) -> Recommendation;
     fn name(&self) -> &str;
+
+    fn choose_target(
+        &self, 
+        _acting: usize,
+        _players: &[Player],
+        _card: usize,
+    ) -> usize 
+    {
+        // Default implementation for strategy: Always return highest hand
+
+        _players
+            .iter()
+            .enumerate()
+            .filter(|(i, p)| *i != acting && p.status == PlayerStatus::Active)
+            .max_by_key(|(_, p)| p.hand.score())
+            .map(|(i, _)| i)
+            .unwrap_or(acting)
+    }
 }
 
 pub struct ExpectedValue;
